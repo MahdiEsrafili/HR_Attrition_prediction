@@ -4,6 +4,7 @@ from kafka import KafkaProducer
 from kafka import KafkaConsumer
 from io import StringIO
 
+
 consumer = KafkaConsumer(
     'ml_*',
      bootstrap_servers=['localhost:9092'],
