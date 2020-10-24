@@ -11,9 +11,9 @@ class ModifiedLabelEncoder(LabelEncoder):
     
     def fit(self, X, y=None):
         res = X.copy()
-        categorical_columns = res.select_dtypes('object').columns
+        self.categorical_columns = res.select_dtypes('object').columns
         self.encoders = dict()
-        for column in categorical_columns:
+        for column in self.categorical_columns:
             le = LabelEncoder()
             le.fit(res[column])
             self.encoders[column]  = le
@@ -25,3 +25,10 @@ class ModifiedLabelEncoder(LabelEncoder):
         for column in categorical_columns:
             res.loc[:,column] = self.encoders[column].transform(res[column]).reshape(-1, 1)
         return res
+
+    def inverse_transform(self,X, y=None):
+        res = X.copy()
+        for column in self.categorical_columns:
+            res.loc[:, column] = self.encoders[column].inverse_transform(res[column]).reshape(-1, 1)
+
+        return res 

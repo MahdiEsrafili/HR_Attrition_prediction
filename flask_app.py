@@ -8,10 +8,12 @@ import numpy as np
 import pandas as pd 
 from ModifiedLabelEncoder import ModifiedLabelEncoder
 from Recommendation import Recommend
+import flask
+flask_app = flask.Flask(__name__)
 model_pipe = joblib.load('model_pipe.joblib')
 le_pipe = joblib.load('le_pipe.joblib')
 
-app = dash.Dash(title= 'Personel Attrition')
+app = dash.Dash(__name__, server = flask_app, title= 'Personel Attrition')
 datax = pd.read_csv('data/sample.csv')
 indx = 18
 sample = datax.iloc[indx:indx+1]
@@ -148,7 +150,7 @@ app.layout = html.Div( [
      ),
      html.Br(),
 
-     html.Label("Recommendation"),
+     html.Label("Similar Persons with NO Attrition"),
 
      html.Br(),
 
@@ -182,4 +184,4 @@ def submit(n_clicks, *vals):
     return f'Attrition: {attrition_list[attrition]}', df.to_dict('records'), columns, recommend_data.to_dict('records'), all_columns_for_table
     
 if __name__ == '__main__':
-    app.run_server(host = 'localhost',debug=True)
+    app.run_server(host = '0.0.0.0',debug=False, port= 5000)

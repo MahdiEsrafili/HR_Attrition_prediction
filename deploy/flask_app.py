@@ -1,18 +1,24 @@
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
+import dash_table
 from dash.dependencies import Input, Output, State
 import joblib
 import numpy as np
-import pandas as pd
+import pandas as pd 
 from ModifiedLabelEncoder import ModifiedLabelEncoder
+from Recommendation import Recommend
+import flask
+flask_app = flask.Flask(__name__)
 model_pipe = joblib.load('model_pipe.joblib')
 le_pipe = joblib.load('le_pipe.joblib')
 
-app = dash.Dash(title= 'Personel Attrition')
-data = pd.read_csv('data/sample.csv')
+app = dash.Dash(__name__, server = flask_app, title= 'Personel Attrition')
+datax = pd.read_csv('data/sample.csv')
 indx = 18
-sample = data.iloc[indx:indx+1]
+sample = datax.iloc[indx:indx+1]
+main_data = pd.read_csv('data/WA_Fn-UseC_-HR-Employee-Attrition.csv')
+
 # data.set_index('EmployeeNumber', inplace = True)
 
 numeric_fields = ['Age', 'DailyRate', 
@@ -24,6 +30,12 @@ numeric_fields = ['Age', 'DailyRate',
        'YearsSinceLastPromotion', 'YearsWithCurrManager']
 categorical_fields = ['BusinessTravel', 'Department', 'EducationField',
        'JobRole', 'MaritalStatus', 'OverTime']
+
+all_columns = numeric_fields + categorical_fields + ['Attrition']
+main_data = main_data[all_columns].reindex(sorted(all_columns), axis=1)
+labeled_data = main_data
+main_data = le_pipe.transform(main_data)
+recommender = Recommend(main_data, 'Attrition')
 style = {
         'height': '25px',
         'width':'200px',
@@ -85,7 +97,7 @@ app.layout = html.Div( [
     #      {'label':'Female', 'value':'Female'},
     #      {'label':'Male', 'value':'Male'}
     #  ], value='Female',style=style)]),
-
+   
 
     html.Br(),
     html.Label(["JobRole", dcc.Dropdown(id="JobRole_id", options = [
@@ -127,11 +139,34 @@ app.layout = html.Div( [
     html.Br(),
     html.Button('Submit', id='submit-val', n_clicks=0, style= {'background-color':'MediumSeaGreen'}),
     html.Br(),
-    html.Div(id='Attrition')  
+    html.Div(id='Attrition')  ,
+     html.Br(),
+      html.Br(),
+     html.Label("Person Info"),
+    dash_table.DataTable(
+    id='person_table',
+    columns = [],
+    data= [],
+     ),
+     html.Br(),
+
+     html.Label("Similar Persons with NO Attrition"),
+
+     html.Br(),
+
+     dash_table.DataTable(
+    id='recommend_table',
+    columns = [],
+    data = [],
+     ),
 ])
 
 i = 1
-@app.callback(Output("Attrition", "children"),
+@app.callback([Output("Attrition", "children"),
+     Output('person_table', 'data'),
+     Output('person_table', 'columns'),
+     Output('recommend_table', 'data'),
+     Output('recommend_table', 'columns')],
     [Input('submit-val', 'n_clicks')],
     [State("{}_id".format(field), 'value') for field in numeric_fields + categorical_fields]
     )
@@ -139,15 +174,14 @@ def submit(n_clicks, *vals):
     clmn =  numeric_fields + categorical_fields
     df = pd.DataFrame({clmn[v] : [vals[v]] for v in range(len(vals))})
     df = df.reindex(sorted(df.columns), axis=1)
-    # print('Data Frame')
-    # print(df)
     x = le_pipe.transform(df)
-    # print('Label Encoded')
-    # print(x)
     attrition = model_pipe.predict(x)[0]
-    # print(attrition)
     attrition_list = ['No', 'Yes']
-    return f'Attrition: {attrition_list[attrition]}'
+    columns = [{"name": i, "id": i} for i in df.columns] 
+    all_columns_for_table = [{"name": i, "id": i} for i in sorted(all_columns)]
+    recommend_data = recommender.recommend(x)
+    recommend_data = le_pipe.inverse_transform(recommend_data)
+    return f'Attrition: {attrition_list[attrition]}', df.to_dict('records'), columns, recommend_data.to_dict('records'), all_columns_for_table
     
 if __name__ == '__main__':
-    app.run_server(host = 'localhost',debug=True)
+    app.run_server(host = '0.0.0.0',debug=False, port= 5000)
