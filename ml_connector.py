@@ -29,4 +29,5 @@ for message in consumer:
 # ml_core = ML_core(train_data, predict_data)
 # ml_core.train()
 # result = ml_core.predict()
-# result.to_csv('runs/prediction_result.csv')
+# result.to_csv('runs/prediction_result.csv')]
+
