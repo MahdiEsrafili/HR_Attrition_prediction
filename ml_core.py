@@ -36,7 +36,7 @@ class ML_core:
         ## send result to kafka connector
 
     def pure_data(self, data):
-        self.extra_columns = ['Name', 'EmployeeCount', 'EmployeeNumber']
+        self.extra_columns = ['EmployeeCount', 'EmployeeNumber']
         return data.drop(self.extra_columns, 1)
 
     def save_model(self):
