@@ -12,13 +12,13 @@ class Analyze:
         self.person = person[self.features]
 
     def analyze(self):
-        numeric_mean = self.recommends.select_dtypes('number').mean().astype('int').reset_index(drop = True).iloc[:1]
+        numeric_mean = self.recommends.select_dtypes('number').mean().astype('int').to_frame().T
         numeric_diff = numeric_mean > self.person.select_dtypes('number').reset_index(drop = True)
-        numeric_diff = numeric_mean[numeric_diff[numeric_diff].dropna(1).columns].to_frame().T
+        self.numeric_diff = numeric_mean[numeric_diff[numeric_diff].dropna(1).columns]
         categorical_frequent = self.recommends.select_dtypes('object').mode().reset_index(drop = True).iloc[:1]
         categorical_diff = categorical_frequent != self.person.select_dtypes('object').reset_index(drop = True)
-        categorical_diff = categorical_frequent[categorical_diff[categorical_diff==True].dropna(1).columns]
-        all_diff = pd.concat((numeric_diff, categorical_diff), 1)
+        self.categorical_diff = categorical_frequent[categorical_diff[categorical_diff==True].dropna(1).columns]
+        all_diff = pd.concat((self.numeric_diff, self.categorical_diff), 1)
         return all_diff.iloc[0].to_json()
 
 
