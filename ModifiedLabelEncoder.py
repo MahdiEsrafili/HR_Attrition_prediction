@@ -28,7 +28,9 @@ class ModifiedLabelEncoder(LabelEncoder):
 
     def inverse_transform(self,X, y=None):
         res = X.copy()
-        for column in self.categorical_columns:
-            res.loc[:, column] = self.encoders[column].inverse_transform(res[column]).reshape(-1, 1)
+        for column in res.columns:
+            if column in self.categorical_columns:
+                res.loc[:, column] = self.encoders[column].inverse_transform(res[column]).reshape(-1, 1)
 
         return res 
+
