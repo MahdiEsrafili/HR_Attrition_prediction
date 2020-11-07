@@ -16,10 +16,14 @@ class ML_core:
             ('label_encoding',ModifiedLabelEncoder())])
         data = self.pure_data(self.training_data)
         pure_data_led= self.label_encoder.fit_transform(data)
-        self.model = Pipeline(steps=[
-            ('model_xgb', XGBClassifier(random_state=42))
-            ])
-        self.model = XGBClassifier()
+        # self.model = Pipeline(steps=[
+        #     ('model_xgb', XGBClassifier(min_child_weight=25, n_estimators = 3000,
+        #                 colsample_bynode= 0.6, max_depth = 8,
+        #                 random_state= 42))
+        #     ])
+        self.model = XGBClassifier(min_child_weight=25, n_estimators = 3000,
+                        colsample_bynode= 0.6, max_depth = 8,
+                        random_state= 42)
         self.model.fit(pure_data_led.drop('Attrition', 1),pure_data_led.Attrition)
         # self.pipeline = union pipelines
         # self.save_model(self.pipeline)
