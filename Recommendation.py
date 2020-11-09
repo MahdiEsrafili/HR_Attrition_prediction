@@ -18,3 +18,5 @@ class Recommend:
         distance, indx = self.knn.kneighbors(sample[self.search_on])
         similar_persons = self.main_data.iloc[indx[0]]
         return similar_persons
+
+

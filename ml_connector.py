@@ -18,7 +18,7 @@ consumer = KafkaConsumer(
      group_id='my-group')
 
 for message in consumer:
-    topic = message.topic
+    topic = message.topicrr
     _, company, field = topic.split('_')
     if field=='trainData':
         # create new ml_core class and train it

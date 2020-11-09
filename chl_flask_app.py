@@ -6,6 +6,13 @@ import pandas as pd
 from ml_core import ML_core
 from Recommendation import Recommend
 from recommend_analyzer import Analyze
+from sqlalchemy import create_engine 
+fro
+impo
+db_string = "postgres://mluser:123456789@localhost:5432/mldb"
+train_table_name = 'train2'
+predict_table_name = 'prediction_data'
+db = create_engine(db_string)  
 
 upload_dir = 'upload_dir'
 app = Flask(__name__)
@@ -37,6 +44,14 @@ def train_predict_recommend(train_data, predict_data):
     # logging.info(f'recommend at {ml_duration:.3f}')
     return result, ml_duration
 
+def train(train_data):
+    start_time = time.time()
+    none_informative = ['Name', 'index]
+    train_data = train_data.drop(none_informative, 1)
+    predict_data = predict_data.drop(none_informative, 1)
+    ml_core = ML_core(train_data, predict_data)
+    ml_core.train()
+
 
 @app.route('/')
 def home():
@@ -60,14 +75,14 @@ def upload_train_predict():
 
 
 @app.route('/train', methods = ['GET', 'POST'])
-def train():
+def train_requst():
     if request.method == 'GET':
         return jsonify(message = 'give company name and excluded features')
 
     if 'company_name' in request.json:
-        company_name = request.json['company_name']
-        exclude_features = request.json['exclude_features']
-        return jsonify(company_name= company_name, exclude_features = exclude_features)
+        data_psql = pd.read_sql(f"select * from '{train_table_name}' where is_sent_to_ml=FALSE", db)
+        return jsonify(company_name= company_name, exclude_features = exclude_features, row_count = data_psql.shape)
+
     else:
         return jsonify(message = 'give company name and excluded features'), 400
 
