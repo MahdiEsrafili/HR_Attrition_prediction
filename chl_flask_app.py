@@ -18,37 +18,11 @@ upload_dir = 'upload_dir'
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = upload_dir
 
-def train_predict_recommend(train_data, predict_data):
-    start_time = time.time()
-    none_informative = ['Name', 'Unnamed: 0']
-    train_data = train_data.drop(none_informative, 1)
-    predict_data = predict_data.drop(none_informative, 1)
-    ml_core = ML_core(train_data, predict_data)
-    ml_core.train()
-    result = ml_core.predict()
-    train_data_led = ml_core.label_encoder.transform(train_data)
-    recommender = Recommend(train_data_led, 'Attrition')
-    need_recommendation = result[result.Attrition==1]
-    recommends_list = []
-    for person_indx in range(need_recommendation.shape[0]):
-        person = ml_core.label_encoder.transform(need_recommendation.iloc[person_indx:person_indx+1])
-        recoms = recommender.recommend(person)
-        analyzer = Analyze(need_recommendation.iloc[person_indx:person_indx+1], train_data.iloc[recoms.index])
-        an = analyzer.analyze()
-        recommends_list.append(an)
-        
-    result['recommendations'] = 'NaN'
-    result.loc[result.Attrition==1, 'recommendations'] = recommends_list
-    end_time = time.time()
-    ml_duration = end_time - start_time
-    # logging.info(f'recommend at {ml_duration:.3f}')
-    return result, ml_duration
-
 def train(train_data):
     start_time = time.time()
     none_informative = ['Name', 'index']
     train_data = train_data.drop(none_informative, 1)
-    ml_core = ML_core(traing_data = train_data)
+    ml_core = ML_core(training_data = train_data)
     training_score = ml_core.train()
     end_time = time.time()
     training_time = end_time - start_time
@@ -56,7 +30,7 @@ def train(train_data):
     joblib.dump(ml_core.label_encoder, 'model_dir/ml_label_encoder.joblib' )
     return training_time, training_score
 
-def predict(predict_data):
+def predict(predict_data, train_data):
     start_time = time.time()
     none_informative = ['Name', 'index']
     predict_data = predict_data.drop(none_informative, 1)
@@ -66,28 +40,33 @@ def predict(predict_data):
     result = ml_core.predict()
     end_time = time.time()
     prediction_time = end_time - start_time
-    return prediction_time
+    recommend_time = recommend(ml_core, train_data, result)
+    return prediction_time, recommend_time
 
+def recommend(ml_core, train_data, predict_data):
+    start_time = time.time()
+    need_recommendation = predict_data[predict_data.Attrition==1]
+    none_informative = ['Name', 'index']
+    train_data = train_data.drop(none_informative, 1)
+    train_data_led = ml_core.label_encoder.transform(train_data)
+    recommender = Recommend(train_data_led, 'Attrition')
+    recommends_list = []
+    for person_indx in range(need_recommendation.shape[0]):
+        person = ml_core.label_encoder.transform(need_recommendation.iloc[person_indx:person_indx+1])
+        recoms = recommender.recommend(person)
+        analyzer = Analyze(need_recommendation.iloc[person_indx:person_indx+1], train_data.iloc[recoms.index])
+        an = analyzer.analyze()
+        recommends_list.append(an)
+
+    predict_data['recommendations'] = 'NaN'
+    predict_data.loc[predict_data.Attrition==1, 'recommendations'] = recommends_list
+    end_time = time.time()
+    recommend_time = end_time - start_time
+    return recommend_time
 
 @app.route('/')
 def home():
     return jsonify(message = 'ml_ai')
-
-@app.route('/upload_train_predict', methods = ['POST'])
-def upload_train_predict():
-    train_file = request.files['train_file']
-    predict_file = request.files['predict_file']
-    if train_file and predict_file:
-        filename = secure_filename(train_file.filename)
-        train_file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-        train_data= pd.read_csv(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-        filename = secure_filename(predict_file.filename)
-        predict_file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-        predict_data = pd.read_csv(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-        result, duration = train_predict_recommend(train_data, predict_data)
-        result.to_csv(os.path.join(app.config['UPLOAD_FOLDER'], 'results.csv'))
-        # return redirect(url_for('uploaded_file', filename=filename))
-        return jsonify(message = ' trained', duration = duration)
 
 
 @app.route('/train')
@@ -98,9 +77,10 @@ def train_requst():
 
 @app.route('/predict')
 def predict_reques():
-    data_psql = pd.read_sql(f"select * from {predict_table_name} where is_sent_to_ml='FALSE'", db)
-    prediction_time = predict(data_psql)
-    return jsonify(prediction_time = '%.2f' % prediction_time)
+    predict_data = pd.read_sql(f"select * from {predict_table_name} where is_sent_to_ml='FALSE'", db)
+    train_data = pd.read_sql(f"select * from {train_table_name} where is_sent_to_ml='FALSE'", db)
+    prediction_time, recommend_time = predict(predict_data,train_data )
+    return jsonify(prediction_time = '%.2f' % prediction_time, recommend_time = '%.2f' % recommend_time)
 
 if __name__ == '__main__':
     app.run(debug=True)
