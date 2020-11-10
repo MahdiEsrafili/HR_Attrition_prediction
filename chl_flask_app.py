@@ -7,8 +7,8 @@ from ml_core import ML_core
 from Recommendation import Recommend
 from recommend_analyzer import Analyze
 from sqlalchemy import create_engine 
-fro
-impo
+import joblib
+
 db_string = "postgres://mluser:123456789@localhost:5432/mldb"
 train_table_name = 'train2'
 predict_table_name = 'prediction_data'
@@ -46,12 +46,16 @@ def train_predict_recommend(train_data, predict_data):
 
 def train(train_data):
     start_time = time.time()
-    none_informative = ['Name', 'index]
+    none_informative = ['Name', 'index']
     train_data = train_data.drop(none_informative, 1)
-    predict_data = predict_data.drop(none_informative, 1)
-    ml_core = ML_core(train_data, predict_data)
-    ml_core.train()
-
+    ml_core = ML_core(train_data)
+    training_score = ml_core.train()
+    end_time = time.time()
+    training_time = end_time - start_time
+    joblib.dump(ml_core.model,'model_dir/ml_core_model.joblib')
+    joblib.dump(ml_core.label_encoder, 'model_dir/ml_label_encoder.joblib' )
+    return training_time, training_score
+    
 
 @app.route('/')
 def home():
@@ -74,19 +78,11 @@ def upload_train_predict():
         return jsonify(message = ' trained', duration = duration)
 
 
-@app.route('/train', methods = ['GET', 'POST'])
+@app.route('/train')
 def train_requst():
-    if request.method == 'GET':
-        return jsonify(message = 'give company name and excluded features')
-
-    if 'company_name' in request.json:
-        data_psql = pd.read_sql(f"select * from '{train_table_name}' where is_sent_to_ml=FALSE", db)
-        return jsonify(company_name= company_name, exclude_features = exclude_features, row_count = data_psql.shape)
-
-    else:
-        return jsonify(message = 'give company name and excluded features'), 400
-
-
+    data_psql = pd.read_sql(f"select * from {train_table_name} where is_sent_to_ml='FALSE'", db)
+    training_time, training_score = train(data_psql)
+    return jsonify(row_count = data_psql.shape, training_time = '%.2f' % training_time, training_score = '%.2f' % training_score)
 
 
 if __name__ == '__main__':
