@@ -10,7 +10,7 @@ from sqlalchemy import create_engine
 import joblib
 
 db_string = "postgres://mluser:123456789@localhost:5432/mldb"
-train_table_name = 'train2'
+train_table_name = 'training_data'
 predict_table_name = 'prediction_data'
 db = create_engine(db_string)  
 
@@ -48,14 +48,26 @@ def train(train_data):
     start_time = time.time()
     none_informative = ['Name', 'index']
     train_data = train_data.drop(none_informative, 1)
-    ml_core = ML_core(train_data)
+    ml_core = ML_core(traing_data = train_data)
     training_score = ml_core.train()
     end_time = time.time()
     training_time = end_time - start_time
     joblib.dump(ml_core.model,'model_dir/ml_core_model.joblib')
     joblib.dump(ml_core.label_encoder, 'model_dir/ml_label_encoder.joblib' )
     return training_time, training_score
-    
+
+def predict(predict_data):
+    start_time = time.time()
+    none_informative = ['Name', 'index']
+    predict_data = predict_data.drop(none_informative, 1)
+    ml_core = ML_core(prediction_data = predict_data)
+    ml_core.model = joblib.load('model_dir/ml_core_model.joblib')
+    ml_core.label_encoder = joblib.load('model_dir/ml_label_encoder.joblib')
+    result = ml_core.predict()
+    end_time = time.time()
+    prediction_time = end_time - start_time
+    return prediction_time
+
 
 @app.route('/')
 def home():
@@ -84,6 +96,11 @@ def train_requst():
     training_time, training_score = train(data_psql)
     return jsonify(row_count = data_psql.shape, training_time = '%.2f' % training_time, training_score = '%.2f' % training_score)
 
+@app.route('/predict')
+def predict_reques():
+    data_psql = pd.read_sql(f"select * from {predict_table_name} where is_sent_to_ml='FALSE'", db)
+    prediction_time = predict(data_psql)
+    return jsonify(prediction_time = '%.2f' % prediction_time)
 
 if __name__ == '__main__':
     app.run(debug=True)

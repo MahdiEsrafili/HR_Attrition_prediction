@@ -7,8 +7,8 @@ from xgboost import XGBClassifier
 from sklearn.pipeline import Pipeline
 
 class ML_core:
-    def __init__(self, traing_data= None, prediction_data=None):
-        self.training_data = traing_data
+    def __init__(self, training_data= None, prediction_data=None):
+        self.training_data = training_data
         self.prediction_data = prediction_data
 
     def train(self):
