@@ -11,6 +11,7 @@ import sqlalchemy
 import joblib
 from knx_features import  train_features, predict_features
 import chl_app_config
+from datetime import datetime
 
 db_string = chl_app_config.db_string
 train_table_name = chl_app_config.train_table_name
@@ -54,7 +55,13 @@ def predict(predict_data, train_data):
         attrition = result.iloc[i]['Attrition']
         rec = result.iloc[i]['recommendations']
         try:
-            q = prediction_table.update().where(prediction_table.c.index == str(indx)).values({'Attrition' : str(attrition), 'recommendation': rec})
+            q = prediction_table.update().where(prediction_table.c.index == str(indx)).values({
+            'Attrition' : str(attrition),
+            'recommendation': rec,
+            'is_sent_to_ml': 'TRUE',
+            'updated_by': 'machine learning',
+            'updated_time' : str(datetime.now())
+            })
             db.execute(q)
         except:
             pass
