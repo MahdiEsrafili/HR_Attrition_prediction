@@ -7,12 +7,18 @@ from ml_core import ML_core
 from Recommendation import Recommend
 from recommend_analyzer import Analyze
 from sqlalchemy import create_engine 
+import sqlalchemy
 import joblib
+from knx_features import  train_features, predict_features
 
 db_string = "postgres://mluser:123456789@localhost:5432/mldb"
 train_table_name = 'training_data'
 predict_table_name = 'prediction_data'
-db = create_engine(db_string)  
+db = create_engine(db_string) 
+metadata = sqlalchemy.MetaData()
+metadata.reflect(bind = db)
+prediction_table = metadata.tables[predict_table_name]
+training_table = metadata.tables[train_table_name]
 
 upload_dir = 'upload_dir'
 app = Flask(__name__)
@@ -20,8 +26,7 @@ app.config['UPLOAD_FOLDER'] = upload_dir
 
 def train(train_data):
     start_time = time.time()
-    none_informative = ['Name', 'index']
-    train_data = train_data.drop(none_informative, 1)
+    train_data = train_data[train_features]
     ml_core = ML_core(training_data = train_data)
     training_score = ml_core.train()
     end_time = time.time()
@@ -32,22 +37,38 @@ def train(train_data):
 
 def predict(predict_data, train_data):
     start_time = time.time()
-    none_informative = ['Name', 'index']
-    predict_data = predict_data.drop(none_informative, 1)
+    predict_data.set_index('index',inplace = True)
+    predict_data = predict_data[predict_features]
     ml_core = ML_core(prediction_data = predict_data)
     ml_core.model = joblib.load('model_dir/ml_core_model.joblib')
     ml_core.label_encoder = joblib.load('model_dir/ml_label_encoder.joblib')
     result = ml_core.predict()
     end_time = time.time()
     prediction_time = end_time - start_time
-    recommend_time = recommend(ml_core, train_data, result)
-    return prediction_time, recommend_time
+    recommend_time, result = recommend(ml_core, train_data, result)
+
+    #update db
+    start_time = time.time()
+    result.reset_index(inplace = True)
+    for i in range(result.shape[0]):
+        indx =result.iloc[i]['index']
+        attrition = result.iloc[i]['Attrition']
+        rec = result.iloc[i]['recommendations']
+        try:
+            q = prediction_table.update().where(prediction_table.c.index == str(indx)).values({'Attrition' : str(attrition), 'recommendation': rec})
+            db.execute(q)
+        except:
+            pass
+
+    end_time = time.time()
+    db_update_time = end_time - start_time
+    return prediction_time, recommend_time, db_update_time
 
 def recommend(ml_core, train_data, predict_data):
     start_time = time.time()
     need_recommendation = predict_data[predict_data.Attrition==1]
-    none_informative = ['Name', 'index']
-    train_data = train_data.drop(none_informative, 1)
+    train_data.set_index('index', inplace = True)
+    train_data = train_data[train_features]
     train_data_led = ml_core.label_encoder.transform(train_data)
     recommender = Recommend(train_data_led, 'Attrition')
     recommends_list = []
@@ -62,7 +83,7 @@ def recommend(ml_core, train_data, predict_data):
     predict_data.loc[predict_data.Attrition==1, 'recommendations'] = recommends_list
     end_time = time.time()
     recommend_time = end_time - start_time
-    return recommend_time
+    return recommend_time, predict_data
 
 @app.route('/')
 def home():
@@ -79,8 +100,8 @@ def train_requst():
 def predict_reques():
     predict_data = pd.read_sql(f"select * from {predict_table_name} where is_sent_to_ml='FALSE'", db)
     train_data = pd.read_sql(f"select * from {train_table_name} where is_sent_to_ml='FALSE'", db)
-    prediction_time, recommend_time = predict(predict_data,train_data )
-    return jsonify(prediction_time = '%.2f' % prediction_time, recommend_time = '%.2f' % recommend_time)
+    prediction_time, recommend_time, db_update_time = predict(predict_data,train_data )
+    return jsonify(prediction_time = '%.2f' % prediction_time, recommend_time = '%.2f' % recommend_time, db_update_time ="%.2f" %db_update_time)
 
 if __name__ == '__main__':
     app.run(debug=True)
