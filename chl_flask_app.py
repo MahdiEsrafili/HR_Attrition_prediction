@@ -10,19 +10,18 @@ from sqlalchemy import create_engine
 import sqlalchemy
 import joblib
 from knx_features import  train_features, predict_features
+import chl_app_config
 
-db_string = "postgres://mluser:123456789@localhost:5432/mldb"
-train_table_name = 'training_data'
-predict_table_name = 'prediction_data'
+db_string = chl_app_config.db_string
+train_table_name = chl_app_config.train_table_name
+predict_table_name = chl_app_config.predict_table_name
 db = create_engine(db_string) 
 metadata = sqlalchemy.MetaData()
 metadata.reflect(bind = db)
 prediction_table = metadata.tables[predict_table_name]
 training_table = metadata.tables[train_table_name]
 
-upload_dir = 'upload_dir'
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = upload_dir
 
 def train(train_data):
     start_time = time.time()
@@ -31,8 +30,8 @@ def train(train_data):
     training_score = ml_core.train()
     end_time = time.time()
     training_time = end_time - start_time
-    joblib.dump(ml_core.model,'model_dir/ml_core_model.joblib')
-    joblib.dump(ml_core.label_encoder, 'model_dir/ml_label_encoder.joblib' )
+    joblib.dump(ml_core.model,chl_app_config.model_dir)
+    joblib.dump(ml_core.label_encoder, chl_app_config.le_dir )
     return training_time, training_score
 
 def predict(predict_data, train_data):
@@ -40,8 +39,8 @@ def predict(predict_data, train_data):
     predict_data.set_index('index',inplace = True)
     predict_data = predict_data[predict_features]
     ml_core = ML_core(prediction_data = predict_data)
-    ml_core.model = joblib.load('model_dir/ml_core_model.joblib')
-    ml_core.label_encoder = joblib.load('model_dir/ml_label_encoder.joblib')
+    ml_core.model = joblib.load(chl_app_config.model_dir)
+    ml_core.label_encoder = joblib.load(chl_app_config.le_dir)
     result = ml_core.predict()
     end_time = time.time()
     prediction_time = end_time - start_time
@@ -94,14 +93,15 @@ def home():
 def train_requst():
     data_psql = pd.read_sql(f"select * from {train_table_name} where is_sent_to_ml='FALSE'", db)
     training_time, training_score = train(data_psql)
-    return jsonify(row_count = data_psql.shape, training_time = '%.2f' % training_time, training_score = '%.2f' % training_score)
+    return jsonify(training_time = '%.2f' % training_time, training_score = '%.2f' % training_score)
 
 @app.route('/predict')
 def predict_reques():
     predict_data = pd.read_sql(f"select * from {predict_table_name} where is_sent_to_ml='FALSE'", db)
     train_data = pd.read_sql(f"select * from {train_table_name} where is_sent_to_ml='FALSE'", db)
     prediction_time, recommend_time, db_update_time = predict(predict_data,train_data )
-    return jsonify(prediction_time = '%.2f' % prediction_time, recommend_time = '%.2f' % recommend_time, db_update_time ="%.2f" %db_update_time)
+    prediction_time += recommend_time + db_update_time
+    return jsonify(prediction_time = '%.2f' % prediction_time)
 
 if __name__ == '__main__':
     app.run(debug=True)
