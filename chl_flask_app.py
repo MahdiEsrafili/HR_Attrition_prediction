@@ -112,7 +112,8 @@ def train_requst():
 
 @app.route('/predict')
 def predict_reques():
-    predict_data = pd.read_sql(f"select * from {predict_table_name} where is_sent_to_ml='FALSE'", db)
+    # predict_data = pd.read_sql(f"select * from {predict_table_name} where is_sent_to_ml='FALSE'", db)
+    predict_data = pd.read_sql(predict_table_name, db)
     # train_data = pd.read_sql(f"select * from {train_table_name} where is_sent_to_ml='FALSE'", db)
     train_data = pd.read_sql(train_table_name, db)
     if predict_data.shape[0]>0:
