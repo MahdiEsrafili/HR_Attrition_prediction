@@ -22,8 +22,8 @@ metadata = sqlalchemy.MetaData()
 metadata.reflect(bind = db)
 prediction_table = metadata.tables[predict_table_name]
 training_table = metadata.tables[train_table_name]
-if not os.path.exists(chl_app_config.model_dir):
-    os.makedirs(chl_app_config.model_dir)
+if not os.path.exists('model_dir'):
+    os.makedirs('model_dir')
 
 app = Flask(__name__)
 
