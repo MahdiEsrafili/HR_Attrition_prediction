@@ -3,3 +3,5 @@ app.log
 tree.png
 upload_dir
 *.joblib
+data
+presentations
