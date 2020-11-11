@@ -12,6 +12,7 @@ import joblib
 from knx_features import  train_features, predict_features
 import chl_app_config
 from datetime import datetime
+import os
 
 db_string = chl_app_config.db_string
 train_table_name = chl_app_config.train_table_name
@@ -21,6 +22,8 @@ metadata = sqlalchemy.MetaData()
 metadata.reflect(bind = db)
 prediction_table = metadata.tables[predict_table_name]
 training_table = metadata.tables[train_table_name]
+if not os.path.exists(chl_app_config.model_dir):
+    os.makedirs(chl_app_config.model_dir)
 
 app = Flask(__name__)
 
