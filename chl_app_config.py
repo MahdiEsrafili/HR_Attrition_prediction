@@ -1,8 +1,8 @@
-user = 'qqisfoyyxyxmdq'
-pswd = '41fe5ad87828d95140f2ec51fb4acf0eba6f3cc0cb6b3f164b69f43ad44517b3'
+user = 'pjohhflfynacwy'
+pswd = '9a5ddc83ee5a46b0a7b115784e3b62d6f57f6dc5fed97cd2bb2cb7f2316c7b12'
 port = 5432
-database = 'dbu1hmokg3ova2'
-host = 'ec2-54-156-85-145.compute-1.amazonaws.com'
+database = 'd4c9gffpjmtgvc'
+host = 'ec2-54-75-150-32.eu-west-1.compute.amazonaws.com'
 db_string = f"postgres://{user}:{pswd}@{host}:{port}/{database}"
 train_table_name = 'training_data'
 predict_table_name = 'prediction_data'
