@@ -43,8 +43,15 @@ def predict(predict_data, train_data):
     predict_data.set_index('index',inplace = True)
     predict_data = predict_data[predict_features]
     ml_core = ML_core(prediction_data = predict_data)
-    ml_core.model = joblib.load(chl_app_config.model_dir)
-    ml_core.label_encoder = joblib.load(chl_app_config.le_dir)
+    try:
+        ml_core.model = joblib.load(chl_app_config.model_dir)
+        ml_core.label_encoder = joblib.load(chl_app_config.le_dir)
+    except:
+        message = 'FAILURE'
+        rediction_time = 0
+        recommend_time = 0
+        db_update_time = 0
+        return rediction_time, recommend_time, db_update_time, message
     result = ml_core.predict()
     end_time = time.time()
     prediction_time = end_time - start_time
@@ -71,7 +78,7 @@ def predict(predict_data, train_data):
 
     end_time = time.time()
     db_update_time = end_time - start_time
-    return prediction_time, recommend_time, db_update_time
+    return prediction_time, recommend_time, db_update_time, message
 
 def recommend(ml_core, train_data, predict_data):
     start_time = time.time()
@@ -105,10 +112,10 @@ def train_requst():
     train_data = pd.read_sql(train_table_name, db)
     if train_data.shape[0]>0:
         training_time, training_score = train(train_data)
-        return jsonify(training_time = '%.2f' % training_time, training_score = '%.2f' % training_score)
+        return jsonify(training_time = '%.2f' % training_time, training_score = '%.2f' % (training_score*100.0))
         # return jsonify(train_shape = train_data.shape)
     else:
-        return jsonify(message = 'nothing to train'), 400
+        return jsonify(message = 'FAILURE'), 400
 
 @app.route('/predict')
 def predict_reques():
@@ -117,9 +124,12 @@ def predict_reques():
     # train_data = pd.read_sql(f"select * from {train_table_name} where is_sent_to_ml='FALSE'", db)
     train_data = pd.read_sql(train_table_name, db)
     if predict_data.shape[0]>0:
-        prediction_time, recommend_time, db_update_time = predict(predict_data,train_data )
+        prediction_time, recommend_time, db_update_time, message = predict(predict_data,train_data )
         prediction_time += recommend_time + db_update_time
-        return jsonify(prediction_time = '%.2f' % prediction_time)
+        status = 200
+        if message == 'FAILURE':
+            status = 400
+        return jsonify(prediction_time = '%.2f' % prediction_time, message = message), status
     else:
         return jsonify(message = 'nothing to predict'), 400
 
