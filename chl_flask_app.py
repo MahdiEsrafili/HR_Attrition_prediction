@@ -118,5 +118,5 @@ def predict_reques():
     else:
         return jsonify(message = 'nothing to predict'), 400
 
-if __name__ == '__main__':
-    app.run(debug=True)
+# if __name__ == '__main__':
+#     app.run(debug=True)
