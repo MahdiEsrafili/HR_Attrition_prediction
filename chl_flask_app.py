@@ -98,17 +98,25 @@ def home():
 
 @app.route('/train')
 def train_requst():
-    data_psql = pd.read_sql(f"select * from {train_table_name} where is_sent_to_ml='FALSE'", db)
-    training_time, training_score = train(data_psql)
-    return jsonify(training_time = '%.2f' % training_time, training_score = '%.2f' % training_score)
+    # data_psql = pd.read_sql(f"select * from {train_table_name} where is_sent_to_ml='FALSE'", db)
+    train_data = pd.read_sql(train_table_name, db)
+    if train_data.shape[0]>0:
+        training_time, training_score = train(train_data)
+        return jsonify(training_time = '%.2f' % training_time, training_score = '%.2f' % training_score)
+    else:
+        return jsonify(message = 'nothing to train'), 400
 
 @app.route('/predict')
 def predict_reques():
     predict_data = pd.read_sql(f"select * from {predict_table_name} where is_sent_to_ml='FALSE'", db)
-    train_data = pd.read_sql(f"select * from {train_table_name} where is_sent_to_ml='FALSE'", db)
-    prediction_time, recommend_time, db_update_time = predict(predict_data,train_data )
-    prediction_time += recommend_time + db_update_time
-    return jsonify(prediction_time = '%.2f' % prediction_time)
+    # train_data = pd.read_sql(f"select * from {train_table_name} where is_sent_to_ml='FALSE'", db)
+    train_data = pd.read_sql(train_table_name, db)
+    if predict_data.shape[0]>0:
+        prediction_time, recommend_time, db_update_time = predict(predict_data,train_data )
+        prediction_time += recommend_time + db_update_time
+        return jsonify(prediction_time = '%.2f' % prediction_time)
+    else:
+        return jsonify(message = 'nothing to predict'), 400
 
 if __name__ == '__main__':
     app.run(debug=True)
