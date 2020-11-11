@@ -18,6 +18,7 @@ db_string = chl_app_config.db_string
 train_table_name = chl_app_config.train_table_name
 predict_table_name = chl_app_config.predict_table_name
 db = create_engine(db_string) 
+conn = db.connect()
 metadata = sqlalchemy.MetaData()
 metadata.reflect(bind = db)
 prediction_table = metadata.tables[predict_table_name]
@@ -72,12 +73,13 @@ def predict(predict_data, train_data):
             'updated_by': 'machine learning',
             'updated_time' : str(datetime.now())
             })
-            db.execute(q)
+            conn.execute(q)
         except:
             pass
 
     end_time = time.time()
     db_update_time = end_time - start_time
+    message = 'SUCCESS'
     return prediction_time, recommend_time, db_update_time, message
 
 def recommend(ml_core, train_data, predict_data):
@@ -109,7 +111,7 @@ def home():
 @app.route('/train')
 def train_requst():
     # data_psql = pd.read_sql(f"select * from {train_table_name} where is_sent_to_ml='FALSE'", db)
-    train_data = pd.read_sql(train_table_name, db)
+    train_data = pd.read_sql(train_table_name, conn)
     if train_data.shape[0]>0:
         training_time, training_score = train(train_data)
         return jsonify(training_time = '%.2f' % training_time, training_score = '%.2f' % (training_score*100.0))
@@ -120,9 +122,9 @@ def train_requst():
 @app.route('/predict')
 def predict_reques():
     # predict_data = pd.read_sql(f"select * from {predict_table_name} where is_sent_to_ml='FALSE'", db)
-    predict_data = pd.read_sql(predict_table_name, db)
+    predict_data = pd.read_sql(predict_table_name, conn)
     # train_data = pd.read_sql(f"select * from {train_table_name} where is_sent_to_ml='FALSE'", db)
-    train_data = pd.read_sql(train_table_name, db)
+    train_data = pd.read_sql(train_table_name, conn)
     if predict_data.shape[0]>0:
         prediction_time, recommend_time, db_update_time, message = predict(predict_data,train_data )
         prediction_time += recommend_time + db_update_time
