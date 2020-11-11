@@ -105,8 +105,8 @@ def train_requst():
     train_data = pd.read_sql(train_table_name, db)
     if train_data.shape[0]>0:
         training_time, training_score = train(train_data)
-        # return jsonify(training_time = '%.2f' % training_time, training_score = '%.2f' % training_score)
-        return jsonify(train_shape = train_data.shape)
+        return jsonify(training_time = '%.2f' % training_time, training_score = '%.2f' % training_score)
+        # return jsonify(train_shape = train_data.shape)
     else:
         return jsonify(message = 'nothing to train'), 400
 
