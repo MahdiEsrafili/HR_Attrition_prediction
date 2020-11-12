@@ -30,9 +30,11 @@ if not os.path.exists('model_dir'):
 
 app = Flask(__name__)
 
-def train(train_data):
+def train(selected_factors = None):
     start_time = time.time()
-    train_data = train_data[train_features]
+    features = list(set(train_features) & set(selected_factors))
+    train_data = pd.read_sql(train_table_name, conn)
+    train_data = train_data[features]
     ml_core = ML_core(training_data = train_data)
     training_score = ml_core.train()
     end_time = time.time()
@@ -129,9 +131,9 @@ def train_data_requst():
                 conn.execute(q)
                 return jsonify(message = "removed data from training table")
             except:
-                return jsonify(message = 'couldnt delete train data')
+                return jsonify(message = 'couldnt delete train data'), 500
         else:
-            return jsonify(message = 'unsupported data type')
+            return jsonify(message = 'unsupported data type'), 400
     else:
         return jsonify(message = 'unsupported method'), 400
 
@@ -162,21 +164,12 @@ def predict_data_requst():
         return jsonify(message = 'unsupported method'), 400
 
 
-@app.route('/predict')
-def predict_reques():
-    # predict_data = pd.read_sql(f"select * from {predict_table_name} where is_sent_to_ml='FALSE'", db)
-    predict_data = pd.read_sql(f"select * from {predict_table_name} where is_delete=0", conn)
-    # train_data = pd.read_sql(f"select * from {train_table_name} where is_sent_to_ml='FALSE'", db)
-    train_data = pd.read_sql(f"select * from {train_table_name} where is_delete=0", conn)
-    if predict_data.shape[0]>0:
-        prediction_time, recommend_time, db_update_time, message = predict(predict_data,train_data )
-        prediction_time += recommend_time + db_update_time
-        status = 200
-        if message == 'FAILURE':
-            status = 400
-        return jsonify(prediction_time = '%.2f' % prediction_time, message = message), status
-    else:
-        return jsonify(message = 'nothing to predict'), 400
-
+@app.route('/critical_factors', methods = ['GET', 'POST'])
+def critical_factors():
+    if request.method == 'POST':
+        critical_factors = request.json['critical_factors']
+        return jsonify(factors_selected = critical_factors)
+    elif request.method == 'GET':
+        return jsonify(message = 'send critical factors with post request. Best regards'), 400
 # if __name__ == '__main__':
 #     app.run(debug=True)
