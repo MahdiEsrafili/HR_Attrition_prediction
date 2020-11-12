@@ -1,11 +1,11 @@
 import pandas as pd
 
 class Analyze:
-    analyze_on = ['business_travel', 'daily_rate', 'distance_from_home',
-                  'environment_satisfaction', 'hourly_rate', 'job_involvement',
-                  'monthly_income', 'monthly_rate', 'over_time', 'percent_salary_hike',
-                  'performance_rating', 'relationship_satisfaction', 'stock_option_level',
-                  'work_life_balance']
+    analyze_on = ['BusinessTravel', 'DailyRate', 'DistanceFromHome',
+                  'EnvironmentSatisfaction', 'HourlyRate', 'JobInvolvement',
+                  'MonthlyIncome', 'MonthlyRate', 'OverTime', 'PercentSalaryHike',
+                  'PerformanceRating', 'RelationshipSatisfaction', 'StockOptionLevel',
+                  'WorkLifeBalance']
     def __init__(self, person, recommends):
         self.features = list(set(self.analyze_on) & set(recommends.columns) & set(person.columns))
         self.recommends = recommends[self.features]
