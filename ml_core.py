@@ -25,8 +25,8 @@ class ML_core:
         self.model = XGBClassifier(min_child_weight=25, n_estimators = 200,
                         colsample_bynode= 0.6, max_depth = 8,
                         random_state= 42)
-        self.model.fit(pure_data_led.drop('Attrition', 1),pure_data_led.Attrition)
-        return self.model.score(pure_data_led.drop('Attrition', 1),pure_data_led.Attrition)
+        self.model.fit(pure_data_led.drop('attrition', 1),pure_data_led.attrition)
+        return self.model.score(pure_data_led.drop('attrition', 1),pure_data_led.attrition)
         # else:
         #     return 'nothin_to_train'
             # self.pipeline = union pipelines
@@ -39,7 +39,7 @@ class ML_core:
         data = self.pure_data(self.prediction_data)
         pure_data_led = self.label_encoder.transform(data)
         result = self.model.predict(pure_data_led)
-        self.prediction_data['Attrition'] = result
+        self.prediction_data['attrition'] = result
         return self.prediction_data
         # else:
         #     return 'nothing_to_predict'
@@ -47,8 +47,9 @@ class ML_core:
         ## send result to kafka connector
 
     def pure_data(self, data):
-        self.extra_columns = ['EmployeeCount', 'EmployeeNumber']
-        return data.drop(self.extra_columns, 1)
+        # self.extra_columns = ['EmployeeCount', 'EmployeeNumber']
+        # return data.drop(self.extra_columns, 1)
+        return data
 
     def save_model(self):
         pass

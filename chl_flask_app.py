@@ -41,7 +41,7 @@ def train(train_data):
 
 def predict(predict_data, train_data):
     start_time = time.time()
-    predict_data.set_index('index',inplace = True)
+    predict_data.set_index('id',inplace = True)
     predict_data = predict_data[predict_features]
     ml_core = ML_core(prediction_data = predict_data)
     try:
@@ -62,16 +62,16 @@ def predict(predict_data, train_data):
     start_time = time.time()
     result.reset_index(inplace = True)
     for i in range(result.shape[0]):
-        indx =result.iloc[i]['index']
-        attrition = result.iloc[i]['Attrition']
+        indx =result.iloc[i]['id']
+        attrition = result.iloc[i]['attrition']
         rec = result.iloc[i]['recommendations']
         try:
-            q = prediction_table.update().where(prediction_table.c.index == str(indx)).values({
-            'Attrition' : str(attrition),
-            'recommendation': rec,
-            'is_sent_to_ml': 'TRUE',
+            q = prediction_table.update().where(prediction_table.c.id == indx).values({
+            'attrition' : bool(attrition),
+            'recommendations': rec,
+            'is_sent_to_ml': True,
             'updated_by': 'machine learning',
-            'updated_time' : str(datetime.now())
+            'updated_time' : pd.to_datetime(datetime.now())
             })
             conn.execute(q)
         except:
@@ -84,21 +84,21 @@ def predict(predict_data, train_data):
 
 def recommend(ml_core, train_data, predict_data):
     start_time = time.time()
-    need_recommendation = predict_data[predict_data.Attrition==1]
-    train_data.set_index('index', inplace = True)
+    need_recommendation = predict_data[predict_data.attrition==1]
+    train_data.set_index('id', inplace = True)
     train_data = train_data[train_features]
     train_data_led = ml_core.label_encoder.transform(train_data)
-    recommender = Recommend(train_data_led, 'Attrition')
+    recommender = Recommend(train_data_led, 'attrition')
     recommends_list = []
     for person_indx in range(need_recommendation.shape[0]):
         person = ml_core.label_encoder.transform(need_recommendation.iloc[person_indx:person_indx+1])
         recoms = recommender.recommend(person)
-        analyzer = Analyze(need_recommendation.iloc[person_indx:person_indx+1], train_data.iloc[recoms.index])
+        analyzer = Analyze(need_recommendation.iloc[person_indx:person_indx+1], train_data[train_data.index.isin(recoms.index)])
         an = analyzer.analyze()
         recommends_list.append(an)
 
     predict_data['recommendations'] = 'NaN'
-    predict_data.loc[predict_data.Attrition==1, 'recommendations'] = recommends_list
+    predict_data.loc[predict_data.attrition==1, 'recommendations'] = recommends_list
     end_time = time.time()
     recommend_time = end_time - start_time
     return recommend_time, predict_data

@@ -1,10 +1,10 @@
-user = 'pjohhflfynacwy'
-pswd = '9a5ddc83ee5a46b0a7b115784e3b62d6f57f6dc5fed97cd2bb2cb7f2316c7b12'
+user = 'qiyetmaoqcmast'
+pswd = 'e95e1fe4987ce78244876261bed606741ae6229b47ddd050bcbe8093f05a5486'
 port = 5432
-database = 'd4c9gffpjmtgvc'
+database = 'dch7v28odrl8ti'
 host = 'ec2-54-75-150-32.eu-west-1.compute.amazonaws.com'
 db_string = f"postgres://{user}:{pswd}@{host}:{port}/{database}"
-train_table_name = 'training_data'
+train_table_name = 'train_data'
 predict_table_name = 'prediction_data'
 upload_dir = 'upload_dir'
 model_dir = 'model_dir/ml_core_model.joblib'
