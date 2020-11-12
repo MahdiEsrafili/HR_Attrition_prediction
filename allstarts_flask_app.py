@@ -32,7 +32,9 @@ app = Flask(__name__)
 
 def train(selected_factors = None):
     start_time = time.time()
-    features = list(set(train_features) & set(selected_factors))
+    features = train_features
+    if selected_factors:
+        features = list(set(train_features) & set(selected_factors))
     train_data = pd.read_sql(train_table_name, conn)
     train_data = train_data[features]
     ml_core = ML_core(training_data = train_data)
@@ -43,10 +45,14 @@ def train(selected_factors = None):
     joblib.dump(ml_core.label_encoder, appconfig.le_dir )
     return training_time, training_score
 
-def predict(predict_data, train_data):
+def predict(selected_factors = None):
     start_time = time.time()
-    predict_data.set_index('id',inplace = True)
-    predict_data = predict_data[predict_features]
+    features = predict_features
+    if selected_factors:
+        features = list(set(predict_features) & set(selected_factors))
+    predict_data = pd.read_sql(predict_table_name, conn)
+    predict_data.set_index('index',inplace = True)
+    predict_data = predict_data[features]
     ml_core = ML_core(prediction_data = predict_data)
     try:
         ml_core.model = joblib.load(appconfig.model_dir)
@@ -60,17 +66,22 @@ def predict(predict_data, train_data):
     result = ml_core.predict()
     end_time = time.time()
     prediction_time = end_time - start_time
+    train_data = pd.read_sql(train_table_name, conn)
+    features = train_features
+    if selected_factors:
+        features = list(set(train_features) & set(selected_factors))
+    train_data = train_data[features]
     recommend_time, result = recommend(ml_core, train_data, result)
 
     #update db
     start_time = time.time()
     result.reset_index(inplace = True)
     for i in range(result.shape[0]):
-        indx =result.iloc[i]['id']
-        attrition = result.iloc[i]['attrition']
+        indx =result.iloc[i]['index']
+        attrition = result.iloc[i]['Attrition']
         rec = result.iloc[i]['recommendations']
         try:
-            q = prediction_table.update().where(prediction_table.c.id == indx).values({
+            q = prediction_table.update().where(prediction_table.c.index == indx).values({
             'attrition' : bool(attrition),
             'recommendations': rec,
             'is_sent_to_ml': True,
@@ -84,25 +95,25 @@ def predict(predict_data, train_data):
     end_time = time.time()
     db_update_time = end_time - start_time
     message = 'SUCCESS'
-    return prediction_time, recommend_time, db_update_time, message
+    return result
 
 def recommend(ml_core, train_data, predict_data):
     start_time = time.time()
-    need_recommendation = predict_data[predict_data.attrition==1]
-    train_data.set_index('id', inplace = True)
+    need_recommendation = predict_data[predict_data.Attrition==1]
+    train_data.set_index('index', inplace = True)
     train_data = train_data[train_features]
     train_data_led = ml_core.label_encoder.transform(train_data)
-    recommender = Recommend(train_data_led, 'attrition')
+    recommender = Recommend(train_data_led, 'Attrition')
     recommends_list = []
     for person_indx in range(need_recommendation.shape[0]):
         person = ml_core.label_encoder.transform(need_recommendation.iloc[person_indx:person_indx+1])
         recoms = recommender.recommend(person)
-        analyzer = Analyze(need_recommendation.iloc[person_indx:person_indx+1], train_data[train_data.index.isin(recoms.index)])
+        analyzer = Analyze(need_recommendation.iloc[person_indx:person_indx+1], train_data.iloc[recoms.index])
         an = analyzer.analyze()
         recommends_list.append(an)
 
     predict_data['recommendations'] = 'NaN'
-    predict_data.loc[predict_data.attrition==1, 'recommendations'] = recommends_list
+    predict_data.loc[predict_data.Attrition==1, 'recommendations'] = recommends_list
     end_time = time.time()
     recommend_time = end_time - start_time
     return recommend_time, predict_data
@@ -115,53 +126,65 @@ def home():
 @app.route('/train_data', methods=['GET', 'POST', 'PUT'])
 def train_data_requst():
     if request.method == 'GET':
-        data = pd.read_sql(appconfig.train_table_name, conn)
-        data = data.to_json()
-        return data
+        pass
+        # data = pd.read_sql(appconfig.train_table_name, conn)
+        # data = data.to_json()
+        # return data
         # return jsonify(message = 'send trainging data via POST method to add them in ML DB or use PUT to deleted records')
+        
     elif request.method == 'POST':
         data = pd.DataFrame(request.json)
         data.to_sql(appconfig.train_table_name, conn, if_exists='append')
-        return jsonify(message = 'added data to training table')
     elif request.method == 'PUT':
         data = request.json
         if type(data['data']) == list:
             q = training_table.delete().where(training_table.c.EmployeeNumber.in_(data['data']))
             try:
                 conn.execute(q)
-                return jsonify(message = "removed data from training table")
+                # return jsonify(message = "removed data from training table")
             except:
-                return jsonify(message = 'couldnt delete train data'), 500
+                # return jsonify(message = 'couldnt delete train data'), 500
+                print('cannot write to db #1001')
         else:
-            return jsonify(message = 'unsupported data type'), 400
+            # return jsonify(message = 'unsupported data type'), 400
+            pass
     else:
-        return jsonify(message = 'unsupported method'), 400
-
+        # return jsonify(message = 'unsupported method'), 400
+        pass
+    training_time, training_score = train()
+    return jsonify(taining_time = training_time, training_score = training_score )
 
 @app.route('/predict_data', methods=['GET', 'POST', 'PUT'])
 def predict_data_requst():
     if request.method == 'GET':
-        data = pd.read_sql(appconfig.predict_table_name, conn)
-        data = data.to_json()
-        return data
+        # data = pd.read_sql(appconfig.predict_table_name, conn)
+        # data = data.to_json()
+        # return data
         # return jsonify(message = 'send trainging data via POST method to add them in ML DB or use PUT to deleted records')
+        pass
     elif request.method == 'POST':
         data = pd.DataFrame(request.json)
         data.to_sql(appconfig.predict_table_name, conn, if_exists='append')
-        return jsonify(message = 'added data to prediction table')
+        # return jsonify(message = 'added data to prediction table')
     elif request.method == 'PUT':
         data = request.json
         if type(data['data']) == list:
             q = prediction_table.delete().where(prediction_table.c.EmployeeNumber.in_(data['data']))
             try:
                 conn.execute(q)
-                return jsonify(message = "removed data from prediction table")
+                # return jsonify(message = "removed data from prediction table")
             except:
-                return jsonify(message = 'couldnt delete prediction data'), 500
+                # return jsonify(message = 'couldnt delete prediction data'), 500
+                print('cannot write to db 1002')
         else:
-            return jsonify(message = 'unsupported data type'), 400
+            # return jsonify(message = 'unsupported data type'), 400
+            pass
     else:
-        return jsonify(message = 'unsupported method'), 400
+        # return jsonify(message = 'unsupported method'), 400
+        pass
+    result = predict()
+    result = result.to_json()
+    return result
 
 
 @app.route('/critical_factors', methods = ['GET', 'POST'])
