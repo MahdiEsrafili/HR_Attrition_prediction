@@ -111,7 +111,7 @@ def home():
 @app.route('/train')
 def train_requst():
     # data_psql = pd.read_sql(f"select * from {train_table_name} where is_sent_to_ml='FALSE'", db)
-    train_data = pd.read_sql(train_table_name, conn)
+    train_data = pd.read_sql(f"select * from {train_table_name} where is_delete=0", conn)
     if train_data.shape[0]>0:
         training_time, training_score = train(train_data)
         return jsonify(training_time = '%.2f' % training_time, training_score = '%.2f' % (training_score*100.0))
@@ -122,9 +122,9 @@ def train_requst():
 @app.route('/predict')
 def predict_reques():
     # predict_data = pd.read_sql(f"select * from {predict_table_name} where is_sent_to_ml='FALSE'", db)
-    predict_data = pd.read_sql(predict_table_name, conn)
+    predict_data = pd.read_sql(f"select * from {predict_table_name} where is_delete=0", conn)
     # train_data = pd.read_sql(f"select * from {train_table_name} where is_sent_to_ml='FALSE'", db)
-    train_data = pd.read_sql(train_table_name, conn)
+    train_data = pd.read_sql(f"select * from {train_table_name} where is_delete=0", conn)
     if predict_data.shape[0]>0:
         prediction_time, recommend_time, db_update_time, message = predict(predict_data,train_data )
         prediction_time += recommend_time + db_update_time
