@@ -1,0 +1,11 @@
+user = 'mluser'
+pswd = '123456789'
+port = 5432
+database = 'mldb'
+host = 'localhost'
+db_string = f"postgres://{user}:{pswd}@{host}:{port}/{database}"
+train_table_name = 'stars_train_data'
+predict_table_name = 'stars_prediction_data'
+upload_dir = 'upload_dir'
+model_dir = 'model_dir/ml_core_model.joblib'
+le_dir = 'model_dir/ml_label_encoder.joblib' 
