@@ -41,8 +41,12 @@ def train(selected_factors = None):
     training_score = ml_core.train()
     end_time = time.time()
     training_time = end_time - start_time
-    joblib.dump(ml_core.model,appconfig.model_dir)
-    joblib.dump(ml_core.label_encoder, appconfig.le_dir )
+    if selected_factors:
+        joblib.dump(ml_core.model,appconfig.temp_model_dir)
+        joblib.dump(ml_core.label_encoder, appconfig.temp_le_dir )
+    else:
+        joblib.dump(ml_core.model,appconfig.model_dir)
+        joblib.dump(ml_core.label_encoder, appconfig.le_dir )
     return training_time, training_score
 
 def predict(selected_factors = None):
@@ -55,8 +59,12 @@ def predict(selected_factors = None):
     predict_data = predict_data[features]
     ml_core = ML_core(prediction_data = predict_data)
     try:
-        ml_core.model = joblib.load(appconfig.model_dir)
-        ml_core.label_encoder = joblib.load(appconfig.le_dir)
+        if selected_factors:
+            ml_core.model = joblib.load(appconfig.temp_model_dir)
+            ml_core.label_encoder = joblib.load(appconfig.temp_le_dir)
+        else:
+            ml_core.model = joblib.load(appconfig.model_dir)
+            ml_core.label_encoder = joblib.load(appconfig.le_dir)
     except:
         message = 'FAILURE'
         rediction_time = 0
@@ -67,11 +75,12 @@ def predict(selected_factors = None):
     end_time = time.time()
     prediction_time = end_time - start_time
     train_data = pd.read_sql(train_table_name, conn)
+    train_data.set_index('index', inplace = True)
     features = train_features
     if selected_factors:
         features = list(set(train_features) & set(selected_factors))
     train_data = train_data[features]
-    recommend_time, result = recommend(ml_core, train_data, result)
+    recommend_time, result = recommend(ml_core, train_data, result,selected_factors)
 
     #update db
     start_time = time.time()
@@ -97,11 +106,14 @@ def predict(selected_factors = None):
     message = 'SUCCESS'
     return result
 
-def recommend(ml_core, train_data, predict_data):
+def recommend(ml_core, train_data, predict_data,selected_factors = None):
     start_time = time.time()
     need_recommendation = predict_data[predict_data.Attrition==1]
-    train_data.set_index('index', inplace = True)
-    train_data = train_data[train_features]
+    # train_data.set_index('index', inplace = True)
+    features = train_features
+    if selected_factors:
+        features = list(set(train_features) & set(selected_factors))
+    train_data = train_data[features]
     train_data_led = ml_core.label_encoder.transform(train_data)
     recommender = Recommend(train_data_led, 'Attrition')
     recommends_list = []
@@ -191,7 +203,13 @@ def predict_data_requst():
 def critical_factors():
     if request.method == 'POST':
         critical_factors = request.json['critical_factors']
-        return jsonify(factors_selected = critical_factors)
+        # return jsonify(factors_selected = critical_factors)
+        if 'Attrition' not in critical_factors:
+            critical_factors = critical_factors + ['Attrition']
+        training_time, training_score = train(critical_factors)
+        result = predict(critical_factors)
+        result = result.to_json()
+        return result
     elif request.method == 'GET':
         return jsonify(message = 'send critical factors with post request. Best regards'), 400
 # if __name__ == '__main__':

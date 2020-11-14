@@ -22,7 +22,7 @@ class ML_core:
         #                 colsample_bynode= 0.6, max_depth = 8,
         #                 random_state= 42))
         #     ])
-        self.model = XGBClassifier(min_child_weight=25, n_estimators = 200,
+        self.model = XGBClassifier(min_child_weight=25, n_estimators = 3000,
                         colsample_bynode= 0.6, max_depth = 8,
                         random_state= 42)
         self.model.fit(pure_data_led.drop('Attrition', 1),pure_data_led.Attrition)

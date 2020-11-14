@@ -13,6 +13,7 @@ class Recommend:
                   
     def __init__(self, data, target):
         self.main_data = data.loc[data[target]==0]
+        self.search_on = list(set(self.search_on) & set(self.main_data.columns))
         self.data = data.loc[data[target]==0][self.search_on]
         self.knn = NearestNeighbors().fit(self.data)
     def recommend(self, sample):
