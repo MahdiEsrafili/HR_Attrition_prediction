@@ -12,4 +12,7 @@ presentations/*
 upload_dir
 upload_dir/*
 runs/*
-
+postman_collections
+sample_data.json
+sample_data_pred.json
+stars_dtypes.py

@@ -1,5 +1,5 @@
 train_features = ['Age', 'Attrition', 'BusinessTravel', 'DailyRate', 'Department',
-       'DistanceFromHome', 'Education', 'EducationField', 'EmployeeCount',
+       'DistanceFromHome', 'Education', 'EducationField',
        'EmployeeNumber', 'EnvironmentSatisfaction', 'Gender', 'HourlyRate',
        'JobInvolvement', 'JobLevel', 'JobRole', 'JobSatisfaction',
        'MaritalStatus', 'MonthlyIncome', 'MonthlyRate', 'NumCompaniesWorked',
@@ -10,7 +10,7 @@ train_features = ['Age', 'Attrition', 'BusinessTravel', 'DailyRate', 'Department
        'YearsWithCurrManager']
 
 predict_features = ['Age', 'BusinessTravel', 'DailyRate', 'Department',
-       'DistanceFromHome', 'Education', 'EducationField', 'EmployeeCount',
+       'DistanceFromHome', 'Education', 'EducationField',
        'EmployeeNumber', 'EnvironmentSatisfaction', 'Gender', 'HourlyRate',
        'JobInvolvement', 'JobLevel', 'JobRole', 'JobSatisfaction',
        'MaritalStatus', 'MonthlyIncome', 'MonthlyRate', 'NumCompaniesWorked',

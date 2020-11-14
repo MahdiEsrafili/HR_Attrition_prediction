@@ -10,9 +10,13 @@ from sqlalchemy import create_engine
 import sqlalchemy
 import joblib
 from knx_features import  train_features, predict_features
+import stars_dtypes as sdt
 import stars_ap_config as appconfig
 from datetime import datetime
 import os
+import numpy as np
+import json
+
 
 db_string = appconfig.db_string
 train_table_name = appconfig.train_table_name
@@ -21,9 +25,17 @@ db = create_engine(db_string)
 conn = db.connect()
 metadata = sqlalchemy.MetaData()
 metadata.reflect(bind = conn)
+if predict_table_name in metadata.tables:
+    prediction_table = metadata.tables[predict_table_name] 
+else:
+    predict_dataframe = pd.DataFrame(columns= train_features + ['Name', 'Attrition', 'recommendations'])
+    predict_dataframe.to_sql(appconfig.predict_table_name, conn, dtype=sdt.predict_dtypes)
 
-prediction_table = metadata.tables[predict_table_name] 
-training_table = metadata.tables[train_table_name]
+if train_table_name in metadata.tables:
+    training_table = metadata.tables[train_table_name]
+else:
+    train_dataframe = pd.DataFrame(columns= train_features + ['Name'])
+    train_dataframe.to_sql(appconfig.train_table_name, conn, dtype= sdt.train_dtypes)
 
 if not os.path.exists('model_dir'):
     os.makedirs('model_dir')
@@ -91,11 +103,8 @@ def predict(selected_factors = None):
         rec = result.iloc[i]['recommendations']
         try:
             q = prediction_table.update().where(prediction_table.c.index == indx).values({
-            'attrition' : bool(attrition),
-            'recommendations': rec,
-            'is_sent_to_ml': True,
-            'updated_by': 'machine learning',
-            'updated_time' : pd.to_datetime(datetime.now())
+            'Attrition' : bool(attrition),
+            'recommendations': rec
             })
             conn.execute(q)
         except:
@@ -122,6 +131,7 @@ def recommend(ml_core, train_data, predict_data,selected_factors = None):
         recoms = recommender.recommend(person)
         analyzer = Analyze(need_recommendation.iloc[person_indx:person_indx+1], train_data.iloc[recoms.index])
         an = analyzer.analyze()
+        # an = json.dumps(an)
         recommends_list.append(an)
 
     predict_data['recommendations'] = 'NaN'
@@ -132,7 +142,7 @@ def recommend(ml_core, train_data, predict_data,selected_factors = None):
 
 @app.route('/')
 def home():
-    return jsonify(message = 'ml_ai')
+    return jsonify(message = 'ml_ai', time = datetime.now())
 
 
 @app.route('/train_data', methods=['GET', 'POST', 'PUT'])
@@ -150,8 +160,8 @@ def train_data_requst():
     elif request.method == 'PUT':
         data = request.json
         if type(data['data']) == list:
-            q = training_table.delete().where(training_table.c.EmployeeNumber.in_(data['data']))
             try:
+                q = training_table.delete().where(training_table.c.EmployeeNumber.in_(data['data']))
                 conn.execute(q)
                 # return jsonify(message = "removed data from training table")
             except:
@@ -181,8 +191,9 @@ def predict_data_requst():
     elif request.method == 'PUT':
         data = request.json
         if type(data['data']) == list:
-            q = prediction_table.delete().where(prediction_table.c.EmployeeNumber.in_(data['data']))
+            
             try:
+                q = prediction_table.delete().where(prediction_table.c.EmployeeNumber.in_(data['data']))
                 conn.execute(q)
                 # return jsonify(message = "removed data from prediction table")
             except:
@@ -195,7 +206,11 @@ def predict_data_requst():
         # return jsonify(message = 'unsupported method'), 400
         pass
     result = predict()
-    result = result.to_json()
+    # rec1 = {'OverTime':'No', 'MonthlyIncome':16799, 'EnvironmentSatisfaction':3}
+    result = result[['EmployeeNumber', 'Attrition', 'recommendations']]
+    # indexs = np.random.choice(list(range(result.shape[0])),np.random.randint(int(result.shape[0]/2)))
+    # result.iloc[indexs]['recommendations'] = json.dumps(rec1)
+    result = result.to_json(orient = 'index')
     return result
 
 
@@ -208,7 +223,8 @@ def critical_factors():
             critical_factors = critical_factors + ['Attrition']
         training_time, training_score = train(critical_factors)
         result = predict(critical_factors)
-        result = result.to_json()
+        result = result[['EmployeeNumber', 'Attrition', 'recommendations']]
+        result = result.to_json(orient = 'index',force_ascii = False)
         return result
     elif request.method == 'GET':
         return jsonify(message = 'send critical factors with post request. Best regards'), 400
