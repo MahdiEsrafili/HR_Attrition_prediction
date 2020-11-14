@@ -145,7 +145,7 @@ def train_data_requst():
         # return jsonify(message = 'send trainging data via POST method to add them in ML DB or use PUT to deleted records')
         
     elif request.method == 'POST':
-        data = pd.DataFrame(request.json)
+        data = pd.DataFrame.from_dict(request.json, orient= 'index')
         data.to_sql(appconfig.train_table_name, conn, if_exists='append')
     elif request.method == 'PUT':
         data = request.json
@@ -175,7 +175,7 @@ def predict_data_requst():
         # return jsonify(message = 'send trainging data via POST method to add them in ML DB or use PUT to deleted records')
         pass
     elif request.method == 'POST':
-        data = pd.DataFrame(request.json)
+        data = pd.DataFrame.from_dict(request.json, orient= 'index')
         data.to_sql(appconfig.predict_table_name, conn, if_exists='append')
         # return jsonify(message = 'added data to prediction table')
     elif request.method == 'PUT':
